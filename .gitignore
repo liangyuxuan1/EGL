@@ -39,7 +39,9 @@ data/
 inputs/
 outputs/
 eval_cache/
-figures/
+figures/*
+!figures/
+!figures/Figure_overview_MICCAI_new.png
 doc/
 memo/
 obsidian/

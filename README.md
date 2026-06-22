@@ -8,6 +8,10 @@ Department of Biomedical Engineering and Center for Biotechnology and Interdisci
 
 The code implements **Evidence-Grounded Learning (EGL)** and **EGL-LLM** for clinical knowledge discovery from repeated fixed-budget model evaluations. EGL accumulates auditable node and edge evidence in an evidence graph. EGL-LLM adds an LLM-based semantic control plane that steers node/edge probing and subset sampling while keeping the fixed evaluator and evidence definitions unchanged.
 
+<p align="center">
+  <img src="figures/Figure_overview_MICCAI_new.png" alt="EGL framework overview" width="760">
+</p>
+
 ## Paper Scope and Configured Tasks
 
 The MICCAI 2026 paper reports the **COPDGene CVD status** experiment. After the paper submission, the experiment configuration was extended for additional internal analyses. Therefore, `config.yaml` currently includes:
