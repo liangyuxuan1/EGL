@@ -1,0 +1,338 @@
+# config.yaml
+# Pattern: multi-level bases + experiments(base + override)
+#
+# Inheritance map in this project:
+#   ct_modeling_common
+#     -> copdgene_ct_common / nlst_ct_common
+#       -> <dataset>_<endpoint>_<task>
+#         -> experiments
+#
+# Reading order:
+# 1. ct_modeling_common: preprocessing + run settings shared by CT modeling
+# 2. *_ct_common: dataset-specific paths / identifiers
+# 3. <dataset>_<endpoint>_<task>: task-specific label definition
+# 4. experiments: concrete runnable variants (baseline / Qwen / ablations)
+
+bases:
+  # ============================================================
+  # Level 1: Global CT Modeling Base
+  # Shared by all CT-based experiments regardless of dataset / endpoint
+  # ============================================================
+  ct_modeling_common:
+    preprocess:
+      # metadata table describing variable type / domain / notes / missingness
+      # Current repo has one shared CT variable summary; dataset-specific meta can override later.
+      meta_csv: data/splitted_data/ct_variable_summary.csv
+      # whether features marked "maybe" are allowed into the candidate pool
+      allow_maybe: true
+      # lower percentile for outlier clipping on eligible numeric variables
+      outlier_p_lo: 0.01
+      # upper percentile for outlier clipping on eligible numeric variables
+      outlier_p_hi: 0.99
+      # candidate features with missing_rate above this threshold are excluded
+      missing_rate_threshold: 0.7
+    run:
+      # base output root; experiment-specific suffixes are added automatically in code
+      out_root: outputs
+      # set to none for baseline non-LLM runs; otherwise choose the controller model name
+      llm_model: none
+      # master experiment seed controlling the non-LLM pipeline reproducibility
+      global_seed: 42
+      # classifier used inside repeated CV evaluation (e.g. Logistic / XGBoost / SVM)
+      cv_model: Logistic
+      # warmup uses (global_seed + warmup_seed_offset) so it stays tied to the experiment
+      warmup_seed_offset: 7
+      # minimum number of warmup metric samples required before OTS trusts empirical thresholds/floors
+      warmup_n_min: 30
+      # rolling history cap stored inside OTS during warmup calibration
+      warmup_cap_global: 400
+      # MAD multiplier for the auc_std instability threshold: median + mad_k * MAD * 1.4826
+      warmup_mad_k: 2.0
+      # lower quantile used to define specificity / sensitivity / precision floors
+      warmup_floor_q: 0.10
+      # feature-set sizes evaluated during warmup; one batch of random sets is generated for each k
+      warmup_k_grid: [10, 15, 20, 25, 30]
+      # number of random feature sets evaluated for each k in warmup_k_grid
+      warmup_sets_per_k: 10
+      # fraction of each warmup feature set drawn from the low-missingness anchor pool
+      warmup_anchor_frac: 0.30
+      # maximum missing_rate allowed when building the preferred anchor pool for warmup
+      warmup_missing_rate_max: 0.30
+      # if true, deprioritize diag_* variables in the warmup anchor pool
+      warmup_prefer_non_diag: true
+      # number of parallel trajectories in the interleaving search
+      run_num: 5
+      # total iterations per trajectory
+      iters: 500
+      # minimum initial feature-set size sampled at iteration 0
+      k_min: 10
+      # maximum initial feature-set size sampled at iteration 0
+      k_max: 20
+      # number of node probes evaluated around the current feature set each iteration
+      p_node: 10
+      # number of edge probes evaluated each iteration
+      p_edge: 30
+      # source pool for edge probing: use the whole base_set or only selected node_targets
+      edge_from: base_set
+      # whether the LLM can bias node/edge probe selection through agendas
+      use_llm_probes: false
+      # whether the LLM can bias Gibbs sampling / set generation through agendas
+      use_llm_gibbs: false
+
+  # ============================================================
+  # Level 2: Dataset Bases
+  # Add dataset-specific feather_path / id_col / visit_col on top of Level 1
+  # ============================================================
+  copdgene_ct_common:
+    base: ct_modeling_common
+    dataset:
+      # short dataset label used in logs / experiment metadata
+      name: COPDGene
+      # source table used to build DatasetCtx
+      feather_path: data/splitted_data/COPD_ct_optimal_series_only.feather
+      # subject identifier column
+      id_col: sid
+      # longitudinal visit / phase column
+      visit_col: Phase_study
+      # fail fast if duplicated (id, visit) rows appear in the source table
+      require_unique_id_visit: true
+
+  nlst_ct_common:
+    base: ct_modeling_common
+    dataset:
+      # short dataset label used in logs / experiment metadata
+      name: NLST
+      # source table used to build DatasetCtx
+      feather_path: data/splitted_data/NLST_ct_optimal_series_only.feather
+      # subject identifier column
+      id_col: sid
+      # longitudinal visit / phase column
+      visit_col: Phase_study
+      # fail fast if duplicated (id, visit) rows appear in the source table
+      require_unique_id_visit: true
+    preprocess:
+      # placeholder: currently the repo has one shared CT variable summary.
+      # If you later create an NLST-specific meta table, override this path here.
+      meta_csv: data/splitted_data/ct_variable_summary.csv
+
+  # ============================================================
+  # Level 3: Task Bases
+  # Combine a dataset base with one endpoint / task definition
+  # ============================================================
+
+  # ------------------------------------------------------------
+  # COPDGene / CVD tasks (implemented)
+  # Inheritance:
+  #   copdgene_cvd_* -> copdgene_ct_common -> ct_modeling_common
+  # ------------------------------------------------------------
+  copdgene_cvd_status:
+    base: copdgene_ct_common
+    task:
+      # task name recorded in DatasetCtx / logs
+      name: CVD_STATUS
+      # high-level task mode; affects downstream interpretation and logging
+      mode: Status
+      # key into the label-builder registry in utils_dataset.py
+      label_builder: CVD_STATUS
+      event_cols:
+        # visit-level composite ASCVD/CVD status field used to build labels
+        diag_cvd: cat
+      label_kwargs:
+        # keep only the cleaner one-row-per-subject status cohort
+        clean_status_cohort: true
+        # require Phase 1 to exist for the subject in the clean status cohort
+        require_phase1_observed: true
+        # remove non-monotonic 1->0 status patterns that likely reflect noise
+        drop_decrease_patterns: true
+
+  copdgene_cvd_pred5y:
+    base: copdgene_ct_common
+    task:
+      # task name recorded in DatasetCtx / logs
+      name: CVD_PRED_5Y
+      # high-level task mode; affects downstream interpretation and logging
+      mode: Prediction
+      # key into the label-builder registry in utils_dataset.py
+      label_builder: CVD_PRED_5Y
+      event_cols:
+        # visit-level composite ASCVD/CVD status field used to derive rolling prediction labels
+        diag_cvd: cat
+      label_kwargs: {}
+
+  # ------------------------------------------------------------
+  # NLST / CVD tasks (templates)
+  # Inheritance:
+  #   nlst_cvd_* -> nlst_ct_common -> ct_modeling_common
+  # ------------------------------------------------------------
+  nlst_cvd_status:
+    base: nlst_ct_common
+    task:
+      # status-style CVD modeling on NLST CT table
+      name: CVD_STATUS
+      mode: Status
+      label_builder: CVD_STATUS
+      event_cols:
+        diag_cvd: cat
+      label_kwargs:
+        clean_status_cohort: true
+        require_phase1_observed: true
+        drop_decrease_patterns: true
+
+  nlst_cvd_pred5y:
+    base: nlst_ct_common
+    task:
+      # prediction-style CVD modeling on NLST CT table
+      # this is a placeholder template; use only if the longitudinal label assumptions are valid for NLST
+      name: CVD_PRED_5Y
+      mode: Prediction
+      label_builder: CVD_PRED_5Y
+      event_cols:
+        diag_cvd: cat
+      label_kwargs: {}
+
+  # ------------------------------------------------------------
+  # COPDGene / COPD tasks (templates)
+  # Inheritance:
+  #   copdgene_copd_* -> copdgene_ct_common -> ct_modeling_common
+  # ------------------------------------------------------------
+  copdgene_copd_status:
+    base: copdgene_ct_common
+    task:
+      # placeholder template for future COPD status modeling
+      # update event_cols and label_builder once the COPD endpoint definition is finalized
+      name: COPD_STATUS
+      mode: Status
+      label_builder: COPD_STATUS
+      event_cols:
+        diag_copd: cat
+      label_kwargs: {}
+
+  copdgene_copd_pred5y:
+    base: copdgene_ct_common
+    task:
+      # placeholder template for future COPD rolling prediction
+      # update event_cols and label_builder once the COPD endpoint definition is finalized
+      name: COPD_PRED_5Y
+      mode: Prediction
+      label_builder: COPD_PRED_5Y
+      event_cols:
+        diag_copd: cat
+      label_kwargs: {}
+
+# ============================================================
+# Level 4: Experiments
+# Concrete runnable variants derived from the task bases above
+# ============================================================
+experiments:
+  # -------------------------
+  # COPDGene / CVD Status
+  # Base chain:
+  #   copdgene_cvd_status -> copdgene_ct_common -> ct_modeling_common
+  # -------------------------
+  - name: copdgene_cvd_status_baseline
+    base: copdgene_cvd_status
+
+  - name: copdgene_cvd_status_qwen
+    base: copdgene_cvd_status
+    override:
+      run:
+        llm_model: Qwen
+        use_llm_probes: true
+        use_llm_gibbs: true
+
+  # - name: copdgene_cvd_status_qwen_nodeT
+  #   base: copdgene_cvd_status
+  #   override:
+  #     run:
+  #       llm_model: Qwen
+  #       use_llm_probes: true
+  #       use_llm_gibbs: true
+  #       edge_from: node_targets
+
+  # - name: copdgene_cvd_status_qwen_no_probes
+  #   base: copdgene_cvd_status
+  #   override:
+  #     run:
+  #       llm_model: Qwen
+  #       use_llm_probes: false
+  #       use_llm_gibbs: true
+
+  # - name: copdgene_cvd_status_qwen_no_gibbs
+  #   base: copdgene_cvd_status
+  #   override:
+  #     run:
+  #       llm_model: Qwen
+  #       use_llm_probes: true
+  #       use_llm_gibbs: false
+
+  # -------------------------
+  # COPDGene / CVD Prediction
+  # Base chain:
+  #   copdgene_cvd_pred5y -> copdgene_ct_common -> ct_modeling_common
+  # -------------------------
+  - name: copdgene_cvd_pred5y_baseline
+    base: copdgene_cvd_pred5y
+
+  - name: copdgene_cvd_pred5y_qwen
+    base: copdgene_cvd_pred5y
+    override:
+      run:
+        llm_model: Qwen
+        use_llm_probes: true
+        use_llm_gibbs: true
+
+  # - name: copdgene_cvd_pred5y_qwen_nodeT
+  #   base: copdgene_cvd_pred5y
+  #   override:
+  #     run:
+  #       llm_model: Qwen
+  #       use_llm_probes: true
+  #       use_llm_gibbs: true
+  #       edge_from: node_targets
+
+  # - name: copdgene_cvd_pred5y_qwen_no_probes
+  #   base: copdgene_cvd_pred5y
+  #   override:
+  #     run:
+  #       llm_model: Qwen
+  #       use_llm_probes: false
+  #       use_llm_gibbs: true
+
+  # - name: copdgene_cvd_pred5y_qwen_no_gibbs
+  #   base: copdgene_cvd_pred5y
+  #   override:
+  #     run:
+  #       llm_model: Qwen
+  #       use_llm_probes: true
+  #       use_llm_gibbs: false
+
+  # -------------------------
+  # NLST / CVD templates
+  # Base chain:
+  #   nlst_cvd_status / nlst_cvd_pred5y -> nlst_ct_common -> ct_modeling_common
+  # -------------------------
+  # - name: nlst_cvd_status_baseline
+  #   base: nlst_cvd_status
+
+  # - name: nlst_cvd_status_qwen
+  #   base: nlst_cvd_status
+  #   override:
+  #     run:
+  #       llm_model: Qwen
+  #       use_llm_probes: true
+  #       use_llm_gibbs: true
+
+  # - name: nlst_cvd_pred5y_baseline
+  #   base: nlst_cvd_pred5y
+
+  # -------------------------
+  # COPD / COPDGene templates
+  # Base chain:
+  #   copdgene_copd_status / copdgene_copd_pred5y -> copdgene_ct_common -> ct_modeling_common
+  # These are placeholders until the COPD label builders are implemented.
+  # -------------------------
+  # - name: copdgene_copd_status_baseline
+  #   base: copdgene_copd_status
+
+  # - name: copdgene_copd_pred5y_baseline
+  #   base: copdgene_copd_pred5y

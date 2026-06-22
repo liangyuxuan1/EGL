@@ -1,0 +1,81 @@
+# Plot configuration for EGL result figures.
+# Data directories point to the current unnumbered copdgene* outputs.
+# Figure directories keep the paper-facing numbered names for compatibility.
+
+output_root: outputs
+figure_root: outputs
+stable_domain_map: outputs/ct_clin_integration/COPD_ct_variable_summary.csv
+
+pairs:
+  - name: status
+    enabled: true
+    method_a: copdgene_cvd_status_baseline_iters500_BaseS_1
+    method_b: copdgene_cvd_status_qwen_iters500_BaseS_useP_useDB_1
+    tag_a: EGL
+    tag_b: EGL-LLM
+    figure_dir: Figures_Baseline_Status_iters500_BaseS_1_vs_Qwen_Status_iters500_BaseS_useP_useDB_1
+    stable_kg:
+      enabled: true
+      run_r: false
+      convergence: true
+    iterations:
+      enabled: true
+    path_agenda:
+      enabled: true
+      v1: true
+      v2: true
+      window_last: 50
+      topk: 15
+    edge_interaction:
+      enabled: true
+      recompute: true
+      top_k_edges: 15
+      primary_metric: auc
+      metrics_for_compute: [auc, auprc, precision, recall, sensitivity, specificity, f1, bal_acc]
+      metrics_for_plot: [auc, auprc, specificity, precision, f1, bal_acc, sensitivity, recall]
+
+  - name: prediction
+    enabled: true
+    method_a: copdgene_cvd_pred5y_baseline_iters500_BaseS_1
+    method_b: copdgene_cvd_pred5y_qwen_iters500_BaseS_useP_useDB_1
+    tag_a: EGL
+    tag_b: EGL-LLM
+    figure_dir: Figures_Baseline_Prediction_iters500_BaseS_1_vs_Qwen_Prediction_iters500_BaseS_useP_useDB_1
+    stable_kg:
+      enabled: true
+      run_r: false
+      convergence: true
+    iterations:
+      enabled: true
+    path_agenda:
+      enabled: true
+      v1: true
+      v2: true
+      window_last: 50
+      topk: 15
+    edge_interaction:
+      enabled: true
+      recompute: true
+      top_k_edges: 15
+      primary_metric: auc
+      metrics_for_compute: [auc, auprc, precision, recall, sensitivity, specificity, f1, bal_acc]
+      metrics_for_plot: [auc, auprc, specificity, precision, f1, bal_acc, sensitivity, recall]
+
+comparisons:
+  - name: status_vs_prediction
+    enabled: true
+    left: status
+    right: prediction
+    output_dir: outputs/Compare_Status_vs_Prediction
+    figure_dirs: [kg_stable_figures, kg_edge_interaction_effects, kg_path_agenda_v2]
+    image_names:
+      kg_stable_figures:
+        - both_top_nodes_bar_compact.png
+        - both_top_edges_bar_compact.png
+        - convergence_curves.png
+      kg_edge_interaction_effects:
+        - box_metric_int_by_sign.png
+        - box_interaction_share_by_sign.png
+        - bar_top1_pos_neg_metric_int.png
+      kg_path_agenda_v2:
+        - path_trajectory_mds_2D_density.png
