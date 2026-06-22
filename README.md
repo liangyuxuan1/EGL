@@ -1,10 +1,11 @@
 # LLM-Steered Clinical Knowledge Discovery for CVD Outcome Modeling
 
-This repository contains the official code release for our accepted MICCAI 2026 paper:
+This repository contains the official code release for the following accepted MICCAI 2026 paper:
 
-**LLM-Steered Clinical Knowledge Discovery for CVD Outcome Modeling**
-Yuxuan Liang, Xuangang Xu, Ge Wang, and Pingkun Yan
-Department of Biomedical Engineering and Center for Biotechnology and Interdisciplinary Studies, Rensselaer Polytechnic Institute
+- **Authors:** Yuxuan Liang, Xuangang Xu, Ge Wang, and Pingkun Yan
+- **Title:** LLM-Steered Clinical Knowledge Discovery for CVD Outcome Modeling
+- **Venue:** MICCAI 2026
+- **Status:** Accepted
 
 The code implements **Evidence-Grounded Learning (EGL)** and **EGL-LLM** for clinical knowledge discovery from repeated fixed-budget model evaluations. EGL accumulates auditable node and edge evidence in an evidence graph. EGL-LLM adds an LLM-based semantic control plane that steers node/edge probing and subset sampling while keeping the fixed evaluator and evidence definitions unchanged.
 
