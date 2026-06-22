@@ -6,9 +6,6 @@ Y. Liang, X. Xu, G. Wang, and P. Yan, "LLM-Steered Clinical Knowledge Discovery 
 
 The code implements **Evidence-Grounded Learning (EGL)** and **EGL-LLM** for clinical knowledge discovery from repeated fixed-budget model evaluations. EGL accumulates auditable node and edge evidence in an evidence graph. EGL-LLM adds an LLM-based semantic control plane that steers node/edge probing and subset sampling while keeping the fixed evaluator and evidence definitions unchanged.
 
-<p align="center">
-  <img src="figures/Figure_overview_MICCAI_new.png" alt="EGL framework overview" width="760">
-</p>
 
 ## Paper Scope and Configured Tasks
 
@@ -113,15 +110,10 @@ Generated files are intentionally ignored by git, including local data, cached C
 
 ## Running Experiments
 
-List configured experiments:
+Inspect resolved configs without running:
 
 ```bash
-uv run python main.py --config config.yaml --list
-```
-
-Inspect a resolved config without running:
-
-```bash
+uv run python main.py --config config.yaml --pattern copdgene_cvd_status --dry-run
 uv run python main.py --config config.yaml --only copdgene_cvd_status_baseline --dry-run
 ```
 

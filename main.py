@@ -4,7 +4,6 @@ main.py
 
 Run multiple experiments from a YAML config with:
 - bases/base/override inheritance (deep merge)
-- --list to list resolved experiment names
 - --dry-run to print the fully materialized config for selected experiments
 
 Expected YAML structure
@@ -24,7 +23,6 @@ experiments:
 
 Usage
 -----
-python main.py --config config.yaml --list
 python main.py --config config.yaml --pattern copdgene_ --dry-run
 python main.py --config config.yaml --only exp_name
 """
